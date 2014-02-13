@@ -1,3 +1,7 @@
+/*
+ * CutJS viewer for p2.js
+ */
+
 Cut.p2 = function(world, options) {
   return new Cut.P2(world, options);
 };
@@ -104,7 +108,6 @@ Cut.P2.prototype.step = function(t) {
       offsetX : x,
       offsetY : -y,
       scaleX : s,
-      scaleY : 1 / s,
       rotation : a
     });
   }
@@ -120,7 +123,7 @@ Cut.P2.prototype.addRenderable = function(obj) {
       Cut.image(cutout).appendTo(obj.ui).pin({
         handle : 0.5,
         offsetX : obj.shapeOffsets[i] ? obj.shapeOffsets[i][0] : 0,
-        offsetY : obj.shapeOffsets[i] ? obj.shapeOffsets[i][1] : 0,
+        offsetY : -(obj.shapeOffsets[i] ? obj.shapeOffsets[i][1] : 0),
         rotation : -obj.shapeAngles[i] || 0
       });
 
@@ -158,7 +161,7 @@ Cut.P2.prototype.addRenderable = function(obj) {
         Cut.image(cutout).appendTo(obj.ui).pin({
           handle : 0.5,
           offsetX : obj.shapeOffsets[i] ? obj.shapeOffsets[i][0] : 0,
-          offsetY : obj.shapeOffsets[i] ? obj.shapeOffsets[i][1] : 0,
+          offsetY : -(obj.shapeOffsets[i] ? obj.shapeOffsets[i][1] : 0),
           rotation : -obj.shapeAngles[i] || 0
         });
       }
@@ -399,10 +402,4 @@ Cut.P2.randomColor = function() {
   var green = Cut.Math.random(192, 256) | 0;
   var blue = Cut.Math.random(192, 256) | 0;
   return "#" + red.toString(16) + green.toString(16) + blue.toString(16);
-};
-
-Cut._function = function(value) {
-  return typeof value === "function" ? value : function() {
-    return value;
-  };
 };

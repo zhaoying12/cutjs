@@ -5,7 +5,20 @@
 // Load an app with root node and container element.
 Cut.Loader.load(function(root, container) {
   // Your apps goes here, add nodes to the root.
-  // Container is the actual element displaying the rendered graphics.
+  // Container is the actual element displaying rendered graphics.
+
+  // Pause playing.
+  root.pause();
+
+  // Resume playing.
+  root.resume();
+
+  // Set view box for root.
+  root.viewbox(width, height);
+
+  // Listen to view port resize events.
+  root.on("resize", function(width, height) {
+  });
 });
 
 //
@@ -59,11 +72,38 @@ bar.visible(visible);
 bar.hide();
 bar.show();
 
-// Register a ticker to be called on ticking (before painting).
-foo.tick(ticker, beforeChildren = false);
+// Visit foo's sub-tree.
+foo.visit({
+  start : function(node) {
+    return skipChildren;
+  },
+  end : function(node) {
+    return stopVisit;
+  },
+  reverse : reverseChildrenOrder = false,
+  visible : onlyVisibleNodes = false
+});
 
-// Register a type-listener to bar.
-// `type` can be array or spaced string of multiple values.
+//
+// ### Tick & Touch
+// Before every painting the tree is ticked, it is when the app and nodes have
+// the chance to update. If at least one node is touched during ticking
+// rendering cycles will continue otherwise it would pause until it is touched.
+
+// Register a ticker to be called on ticking.
+foo.tick(function(millisecElapsed) {
+}, beforeChildren = false);
+
+// Rendering pauses unless/until at least one node is touched directly or
+// indirectly.
+foo.touch();
+
+//
+// ### Events
+//
+
+// Register a type-listener to bar. `type` can be one or an array of strings or
+// spaced strings.
 foo.on(type, listener);
 
 // Get type-listeners registered to bar.
@@ -72,25 +112,9 @@ foo.listeners(type);
 // Call type-listeners with args.
 foo.publish(type, args);
 
-// Visit foo's sub-tree.
-foo.visit({
-  start : function() {
-    return skipChildren ? true : false;
-  },
-  end : function() {
-    return stopVisit ? true : false;
-  },
-  reverse : reverseChildrenOrder ? true : false,
-  visible : onlyVisibleNodes ? true : false
-});
-
-// Rendering pauses unless/until at least one node is touched directly or
-// indirectly.
-foo.touch();
-
 //
 // ### Pinning
-// Pinnint is a top level concept, it refers to transforming a node relative
+// Pinning is a top level concept, it refers to transforming a node relative
 // to its parent.
 
 // Get a pinning value.
@@ -156,7 +180,7 @@ tween.then(function() {
 });
 
 // Add another tweening to queue.
-tween.tween(duration = 400, delay = 0);
+var nextTween = tween.tween(duration = 400, delay = 0);
 
 //
 // ### Image
@@ -191,21 +215,27 @@ anim.fps(fps);
 // Set anim cutouts.
 anim.setFrames(cutouts);
 
-anim.gotoFrame(n, resize = false);
+// Go to n-th frame.
+anim.gotoFrame(n);
 
-anim.randomFrame();
-
+// Move n frames.
 anim.moveFrame(n);
 
-anim.play(reset = false);
+// Get number of frames.
+anim.length();
 
+// Start playing (from `frame`).
+anim.play(frame = null);
+
+// Stop playing (and go to `frame`).
 anim.stop(frame = null);
 
+// Play `repeat * length` frames and then stop and call callback.
 anim.repeat(repeat, callback = null);
 
 //
 // ### Row/Column
-// A row is a node which organizes its children as a horizontal/vertical
+// A row/column is a node which organizes its children as a horizontal/vertical
 // sequence.
 
 // Create a new row/column.
@@ -218,7 +248,7 @@ var column = Cut.column(childrenHorizontalAlign = 0);
 // value.
 
 // Create a new string instance.
-Cut.string(cutouts);
+var string = Cut.string(cutouts);
 
 string.setFont(cutouts);
 
@@ -269,24 +299,31 @@ cutouts = "textureName:cutoutPrefix";
 // ### Mouse(Touch)
 // Mouse class is used to capture and process mouse and touch events.
 
-// Subscribe root.
+// Subscribe root to Mouse events.
 Cut.Mouse.subscribe(root, container, captureAnyMove = false);
 
-// Add click listener to bar, other mouse/touch event types are start, end and
-// move.
+// Add click listener to bar.
 bar.on(Cut.Mouse.CLICK, function(event, point) {
-  // point is relative to this node.
+  // point.x and point.y are relative to this node left and top.
+  return trueToStopPropagating;
 });
 
+// Mouse events:
+Cut.Mouse.CLICK = "click";
+Cut.Mouse.START = "touchstart mousedown";
+Cut.Mouse.MOVE = "touchmove mousemove";
+Cut.Mouse.END = "touchend mouseup";
+
 //
-// ### Extending Cut
+// ### Creating new node classes.
 //
 
-// Home extends Cut.
-function Home() {
-  Home.prototype._super.apply(this, arguments);
+function View() {
+  View.prototype._super.apply(this, arguments);
+  if (arguments[0] === Cut.Proto)
+    return;
   // ...
 }
-Home.prototype = new Cut(Cut.Proto);
-Home.prototype._super = Cut;
-Home.prototype.constructor = Home;
+View.prototype = new Cut(Cut.Proto); // or Object.create(Cut)
+View.prototype._super = Cut;
+View.prototype.constructor = View;

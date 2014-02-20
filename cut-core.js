@@ -8,8 +8,6 @@
 DEBUG = (typeof DEBUG === 'undefined' || DEBUG) && console;
 
 function Cut() {
-  if (arguments[0] === Cut.Proto)
-    return;
 
   Cut._stats.create++;
 
@@ -23,7 +21,7 @@ function Cut() {
   this._first = null;
   this._last = null;
 
-  this._pin = new Cut.Pin().tick(this);
+  this._pin = new Cut.Pin(this);
   this._outs = [];
   this._tickBefore = [];
   this._tickAfter = [];
@@ -31,7 +29,26 @@ function Cut() {
   this._alpha = 1;
 };
 
-Cut.Proto = {};
+Cut._create = (function() {
+  if (typeof Object.create == "function") {
+    return function() {
+      return Object.create.apply(null, arguments);
+    };
+  } else {
+    var F = function() {
+    };
+    return function(proto) {
+      if (arguments.length > 1) {
+        throw Error("Second argument is not supported!");
+      }
+      if (proto === null || typeof proto != "object") {
+        throw Error("Invalid prototype!");
+      }
+      F.prototype = proto;
+      return new F;
+    };
+  }
+})();
 
 Cut._stats = {
   create : 0,
@@ -56,11 +73,18 @@ Cut.prototype.render = function(context) {
   Cut._stats.fps = 1000 / (Cut._now() - now);
 };
 
+Cut.prototype.MAX_ELAPSE = Infinity;
+
 Cut.prototype._tick = function(elapsed) {
   if (!this._visible) {
     return;
   }
-  this._pin.tick(this);
+
+  if (elapsed > this.MAX_ELAPSE) {
+    elapsed = this.MAX_ELAPSE;
+  }
+
+  this._pin.tick();
 
   var length = this._tickBefore.length;
   for (var i = 0; i < length; i++) {
@@ -246,6 +270,9 @@ Cut.prototype.last = function(visible) {
 
 Cut.prototype.append = function() {
   for (var i = 0; i < arguments.length; i++) {
+    if (!Cut._isCut(arguments[i])) {
+      throw "It is not a Cut node!";
+    }
     arguments[i].appendTo(this);
   }
   return this;
@@ -253,6 +280,9 @@ Cut.prototype.append = function() {
 
 Cut.prototype.prepend = function() {
   for (var i = 0; i < arguments.length; i++) {
+    if (!Cut._isCut(arguments[i])) {
+      throw "It is not a Cut node!";
+    }
     arguments[i].prependTo(this);
   }
   return this;
@@ -261,6 +291,9 @@ Cut.prototype.prepend = function() {
 Cut.prototype.appendTo = function(parent) {
   if (!parent) {
     throw "Parent is null!";
+  }
+  if (!Cut._isCut(parent)) {
+    throw "It is not a Cut node!";
   }
 
   this.remove();
@@ -287,6 +320,9 @@ Cut.prototype.prependTo = function(parent) {
   if (!parent) {
     throw "Parent is null!";
   }
+  if (!Cut._isCut(parent)) {
+    throw "It is not a Cut node!";
+  }
 
   this.remove();
 
@@ -311,6 +347,9 @@ Cut.prototype.prependTo = function(parent) {
 Cut.prototype.insertNext = function() {
   if (arguments.length) {
     for (var i = 0; i < arguments.length; i++) {
+      if (!Cut._isCut(arguments[i])) {
+        throw "It is not a Cut node!";
+      }
       arguments[i] && arguments[i].insertAfter(this);
     }
   }
@@ -320,6 +359,9 @@ Cut.prototype.insertNext = function() {
 Cut.prototype.insertPrev = function() {
   if (arguments.length) {
     for (var i = 0; i < arguments.length; i++) {
+      if (!Cut._isCut(arguments[i])) {
+        throw "It is not a Cut node!";
+      }
       arguments[i] && arguments[i].insertBefore(this);
     }
   }
@@ -329,6 +371,9 @@ Cut.prototype.insertPrev = function() {
 Cut.prototype.insertBefore = function(next) {
   if (!next) {
     throw "Next is null!";
+  }
+  if (!Cut._isCut(next)) {
+    throw "It is not a Cut node!";
   }
 
   this.remove();
@@ -351,6 +396,9 @@ Cut.prototype.insertAfter = function(prev) {
   if (!prev) {
     throw "Prev is null!";
   }
+  if (!Cut._isCut(prev)) {
+    throw "It is not a Cut node!";
+  }
 
   this.remove();
 
@@ -371,6 +419,9 @@ Cut.prototype.insertAfter = function(prev) {
 Cut.prototype.remove = function() {
   if (arguments.length) {
     for (var i = 0; i < arguments.length; i++) {
+      if (!Cut._isCut(arguments[i])) {
+        throw "It is not a Cut node!";
+      }
       arguments[i] && arguments[i].remove();
     }
     return this;
@@ -580,8 +631,6 @@ Cut.root = function(render, request) {
 
 Cut.Root = function(render, request) {
   Cut.String.prototype._super.apply(this, arguments);
-  if (arguments[0] === Cut.Proto)
-    return;
 
   var paused = true;
   var self = this;
@@ -659,7 +708,7 @@ Cut.Root = function(render, request) {
 
 };
 
-Cut.Root.prototype = new Cut(Cut.Proto);
+Cut.Root.prototype = Cut._create(Cut.prototype);
 Cut.Root.prototype._super = Cut;
 Cut.Root.prototype.constructor = Cut.Root;
 
@@ -671,11 +720,9 @@ Cut.image = function(selector) {
 
 Cut.Image = function() {
   Cut.Image.prototype._super.apply(this, arguments);
-  if (arguments[0] === Cut.Proto)
-    return;
 };
 
-Cut.Image.prototype = new Cut(Cut.Proto);
+Cut.Image.prototype = Cut._create(Cut.prototype);
 Cut.Image.prototype._super = Cut;
 Cut.Image.prototype.constructor = Cut.Image;
 
@@ -705,8 +752,6 @@ Cut.anim = function(selector, fps) {
 
 Cut.Anim = function() {
   Cut.Anim.prototype._super.apply(this, arguments);
-  if (arguments[0] === Cut.Proto)
-    return;
 
   this._fps = Cut.Anim.FPS;
   this._ft = 1000 / this._fps;
@@ -734,7 +779,7 @@ Cut.Anim = function() {
   }, false);
 };
 
-Cut.Anim.prototype = new Cut(Cut.Proto);
+Cut.Anim.prototype = Cut._create(Cut.prototype);
 Cut.Anim.prototype._super = Cut;
 Cut.Anim.prototype.constructor = Cut.Anim;
 
@@ -826,12 +871,10 @@ Cut.string = function(selector) {
 
 Cut.String = function() {
   Cut.String.prototype._super.apply(this, arguments);
-  if (arguments[0] === Cut.Proto)
-    return;
   this.row();
 };
 
-Cut.String.prototype = new Cut(Cut.Proto);
+Cut.String.prototype = Cut._create(Cut.prototype);
 Cut.String.prototype._super = Cut;
 Cut.String.prototype.constructor = Cut.String;
 
@@ -1485,9 +1528,9 @@ Cut.Out.drawing = function(name, w, h, ratio, draw, data) {
   return data;
 };
 
-Cut.Pin = function() {
+Cut.Pin = function(owner) {
 
-  this._owner = null;
+  this._owner = owner;
   this._parent = null;
 
   // relative to parent
@@ -1548,9 +1591,8 @@ Cut.Pin.prototype.reset = function() {
   this._matrix_ts = Cut._TS++;
 };
 
-Cut.Pin.prototype.tick = function(owner) {
-  this._owner = owner;
-  this._parent = owner._parent && owner._parent._pin;
+Cut.Pin.prototype.tick = function() {
+  this._parent = this._owner._parent && this._owner._parent._pin;
 
   if (this._handled && this._handle_mo != this._transform_ts) {
     this._handle_mo = this._transform_ts;
@@ -2125,6 +2167,10 @@ Cut.Math.length = function(x, y) {
 };
 
 Cut._TS = 0;
+
+Cut._isCut = function(obj) {
+  return obj instanceof Cut;
+};
 
 Cut._isNum = function(x) {
   return typeof x === "number";

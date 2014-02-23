@@ -67,13 +67,13 @@ Cut.Loader = {
       var width = 0, height = 0, ratio = 1;
 
       DEBUG && console.log("Creating root...");
-      var root = Cut.root(function(root) {
+      var root = Cut.root(function(callback) {
+        window.requestAnimationFrame(callback);
+      }, function() {
         context.setTransform(1, 0, 0, 1, 0, 0);
         context.clearRect(0, 0, width, height);
-        root.render(context);
+        this.render(context);
         FastCanvas.render();
-      }, function(callback) {
-        window.requestAnimationFrame(callback);
       });
 
       canvas = FastCanvas.create(typeof FASTCANVAS_FALLBACK !== "undefined"
@@ -143,7 +143,7 @@ Cut.Loader = {
         root.visit({
           start : function(cut) {
             var stop = true;
-            var listeners = cut.listeners("resize");
+            var listeners = cut.listeners("viewport");
             if (listeners) {
               for (var l = 0; l < listeners.length; l++)
                 stop &= !listeners[l].call(cut, width, height);

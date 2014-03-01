@@ -8,6 +8,9 @@
 DEBUG = (typeof DEBUG === 'undefined' || DEBUG) && console;
 
 function Cut() {
+  if (!(this instanceof Cut)) {
+    return Cut.Loader.load.apply(Cut.Loader, arguments);
+  }
 
   Cut._stats.create++;
 
@@ -1139,17 +1142,20 @@ Cut.prototype.sequence = function(type) {
     var first = true;
     while (child = next) {
       next = child.next(true);
-      child.pin().relativeMatrix();
+      child.pin().aabb();
+      var w = child._pin._pivoted ? child._pin._width : child._pin._aabb.width;
+      var h = child._pin._pivoted ? child._pin._height
+          : child._pin._aabb.height;
       if (type == "column") {
         !first && (height += this._spacing || 0);
         child.pin("offsetY") != height && child.pin("offsetY", height);
-        width = Math.max(width, child._pin._aabbWidth);
-        height = height + child._pin._aabbHeight;
+        width = Math.max(width, w);
+        height = height + h;
       } else if (type == "row") {
         !first && (width += this._spacing || 0);
         child.pin("offsetX") != width && child.pin("offsetX", width);
-        width = width + child._pin._aabbWidth;
-        height = Math.max(height, child._pin._aabbHeight);
+        width = width + w;
+        height = Math.max(height, h);
       }
       first = false;
     }
@@ -1185,9 +1191,9 @@ Cut.prototype.box = function(type) {
     var child, next = this.first(true);
     while (child = next) {
       next = child.next(true);
-      child.pin().relativeMatrix();
-      width = Math.max(width, child._pin._aabbWidth);
-      height = Math.max(height, child._pin._aabbHeight);
+      child.pin().aabb();
+      width = Math.max(width, child._pin._aabb.width);
+      height = Math.max(height, child._pin._aabb.height);
     }
     width += 2 * this._padding || 0;
     height += 2 * this._padding || 0;
@@ -1555,9 +1561,6 @@ Cut.Pin = function(owner) {
   // relative to root
   this._absoluteMatrix = new Cut.Matrix();
 
-  // no-translation
-  this._aabbMatrix = new Cut.Matrix();
-
   this.reset();
 };
 
@@ -1577,17 +1580,17 @@ Cut.Pin.prototype.reset = function() {
   this._skewX = 0;
   this._rotation = 0;
 
-  // scale/skew/rotate center %
+  // scale/skew/rotate center
   this._pivoted = false;
   this._pivotX = null;
   this._pivotY = null;
 
-  // positioning center %
+  // self pin point
   this._handled = false;
   this._handleX = 0;
   this._handleY = 0;
 
-  // alignment to parent %
+  // parent pin point
   this._aligned = false;
   this._alignX = 0;
   this._alignY = 0;
@@ -1596,11 +1599,12 @@ Cut.Pin.prototype.reset = function() {
   this._offsetX = 0;
   this._offsetY = 0;
 
-  // calculated bounding rect as seen by parent
-  this._aabbX = 0;
-  this._aabbY = 0;
-  this._aabbWidth = this._width;
-  this._aabbHeight = this._height;
+  this._aabb = {
+    x : 0,
+    y : 0,
+    width : this._width,
+    height : this._height
+  };
 
   this._ts_translate = Cut._TS++;
   this._ts_transform = Cut._TS++;
@@ -1669,14 +1673,14 @@ Cut.Pin.prototype.relativeMatrix = function() {
     rel.translate(this._pivotX * this._width, this._pivotY * this._height);
   }
 
-  this.boundMatrix();
-
-  this._x = this._offsetX - this._aabbX;
-  this._y = this._offsetY - this._aabbY;
+  this._x = this._offsetX;
+  this._y = this._offsetY;
 
   if (this._handled) {
-    this._x -= this._handleX * this._aabbWidth;
-    this._y -= this._handleY * this._aabbHeight;
+    this._x -= rel.mapX(this._handleX * this._width, this._handleY
+        * this._height);
+    this._y -= rel.mapY(this._handleX * this._width, this._handleY
+        * this._height);
   }
 
   if (this._aligned && this._parent) {
@@ -1690,42 +1694,42 @@ Cut.Pin.prototype.relativeMatrix = function() {
   return this._relativeMatrix;
 };
 
-Cut.Pin.prototype.boundMatrix = function() {
+Cut.Pin.prototype.aabb = function() {
+
   if (this._mo_aabb == this._ts_transform) {
-    return;
+    return this._aabb;
   }
   this._mo_aabb = this._ts_transform;
 
-  if (this._pivoted) {
-    this._aabbX = 0;
-    this._aabbY = 0;
-    this._aabbWidth = this._width;
-    this._aabbHeight = this._height;
-    return;
-  }
-
-  var m = this._aabbMatrix;
-  m.identity();
-  m.scale(this._scaleX, this._scaleY);
-  m.rotate(this._rotation);
-  m.skew(this._skewX, this._skewX);
-
-  var p, q;
+  var p, q, m = this.relativeMatrix();
   if (m.a > 0 && m.c > 0 || m.a < 0 && m.c < 0) {
     p = 0, q = m.a * this._width + m.c * this._height;
   } else {
     p = m.a * this._width, q = m.c * this._height;
   }
-  this._aabbX = Math.min(p, q);
-  this._aabbWidth = Math.abs(p - q);
+
+  if (p > q) {
+    this._aabb.x = q;
+    this._aabb.width = p - q;
+  } else {
+    this._aabb.x = p;
+    this._aabb.width = q - p;
+  }
 
   if (m.b > 0 && m.d > 0 || m.b < 0 && m.d < 0) {
     p = 0, q = m.b * this._width + m.d * this._height;
   } else {
     p = m.b * this._width, q = m.d * this._height;
   }
-  this._aabbY = Math.min(p, q);
-  this._aabbHeight = Math.abs(p - q);
+  if (p > q) {
+    this._aabb.y = q;
+    this._aabb.height = p - q;
+  } else {
+    this._aabb.y = p;
+    this._aabb.height = q - p;
+  }
+
+  return this._aabb;
 };
 
 Cut.Pin.prototype.update = function() {
@@ -2250,3 +2254,35 @@ Cut._status = function(msg) {
   }
   Cut._statusbox.innerHTML = msg;
 };
+
+Cut.Loader = (function() {
+  var queue = [];
+  var loaded = [];
+  var started = false;
+  return {
+    load : function(app, canvas) {
+      if (started) {
+        loaded.push(this.init.apply(this, arguments));
+      } else {
+        queue.push(arguments);
+      }
+    },
+    start : function() {
+      started = true;
+      var args;
+      while (args = queue.shift()) {
+        loaded.push(this.init.apply(this, args));
+      }
+    },
+    pause : function() {
+      for (var i = queue.length - 1; i >= 0; i--) {
+        loaded[i].pause();
+      }
+    },
+    resume : function() {
+      for (var i = queue.length - 1; i >= 0; i--) {
+        loaded[i].resume();
+      }
+    }
+  };
+})();

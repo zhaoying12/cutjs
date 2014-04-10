@@ -14,14 +14,14 @@ DEBUG = (typeof DEBUG === 'undefined' || DEBUG) && console;
 window.addEventListener("load", function() {
   DEBUG && console.log("On load.");
   // device ready not called; must be in a browser
-  var readyTimeout = setTimeout(function() {
-    DEBUG && console.log("On deviceready timeout.");
-    Cut.Loader.start();
-  }, 2000);
+  // var readyTimeout = setTimeout(function() {
+  // DEBUG && console.log("On deviceready timeout.");
+  // Cut.Loader.start();
+  // }, 2000);
 
   document.addEventListener("deviceready", function() {
     DEBUG && console.log("On deviceready.");
-    clearTimeout(readyTimeout);
+    // clearTimeout(readyTimeout);
     Cut.Loader.start();
   }, false);
 
@@ -38,6 +38,10 @@ Cut.Loader.init = function(app, canvas) {
   var context = null;
   var width = 0, height = 0, ratio = 1;
 
+  if (typeof FastCanvas === "undefined") {
+    FastCanvas = window.FastCanvas;
+  }
+  
   DEBUG && console.log("Creating root...");
   var root = Cut.root(function(callback) {
     window.requestAnimationFrame(callback);

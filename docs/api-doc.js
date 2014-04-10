@@ -72,7 +72,12 @@ bar.visible(visible);
 bar.hide();
 bar.show();
 
-// Iterate over foo's children.
+// Iterate over foo's children, `child` can not be remove.
+for (var child = foo.first(); child; child = child.next()) {
+  // use child
+}
+
+// Iterate over foo's children, `child` can be remove.
 var child, next = foo.first();
 while (child = next) {
   next = child.next();
@@ -128,26 +133,44 @@ foo.publish(type, args);
 bar.pin(name);
 // Set a pinning value.
 bar.pin(name, value);
-
 // Set one or more pinning values.
-// If `nameX` equals `nameY`, `name` shorthand can be used instead.
-// For width/height ratio 0 is top/left and 1 is bottom/right.
+bar.pin({
+  name : value
+});
+
+// Transparency
 bar.pin({
   // Transparency applied to self and children.
   alpha : 1,
   // Transparency applied only to self textures.
-  textureAlpha : 1,
+  textureAlpha : 1
+});
+
+// When `nameX` equals `nameY`, `name` shorthand can be used instead.
+
+// Transformation
+// `rotation` is applied after scale and skew
+bar.pin({
   scaleX : 1,
   scaleY : 1,
   skewX : 0,
   skewY : 0,
-  rotation : 0,
-  // Relative location on self used as scale/skew/rotation center.
-  pivotX : 0,
-  pivotY : 0,
-  // Automatically are set depending on node type.
+  rotation : 0
+});
+
+// Size
+// Usually are set automatically depending on node type.
+bar.pin({
   height : height,
   width : width,
+});
+
+// Positioning
+// For width/height ratio 0 is top/left and 1 is bottom/right.
+bar.pin({
+  // Relative location on self used as scale/skew/rotation center. See handle.
+  pivotX : 0,
+  pivotY : 0,
   // Pin point on parent used for positioning, as ratio of parent width/height.
   alignX : 0,
   alignY : 0,
@@ -160,7 +183,7 @@ bar.pin({
   offsetY : 0,
 });
 
-// Scale to width/height.
+// Scale to new width/height.
 // Optionally use "in" and "out" as mode to scale proportionally.
 bar.pin({
   scaleMode : mode,
@@ -168,7 +191,7 @@ bar.pin({
   scaleHeight : height,
 });
 
-// Scale to width/height and then resize to fill width/height.
+// Scale to new width/height and then resize to fill width/height.
 // Optionally use "in" and "out" as mode to scale proportionally.
 bar.pin({
   resizeMode : mode,
@@ -228,8 +251,11 @@ var anim = Cut.anim(cutouts, fps = Cut.Anim.FPS);
 anim.fps();
 anim.fps(fps);
 
-// Set anim cutouts.
-anim.setFrames(cutouts);
+// Set anim frames as cutout prefix. See Cutout section for more.
+anim.setFrames("texture:prefix");
+
+// Set anim frames as cutout array. See Cutout section for more.
+anim.setFrames(array);
 
 // Go to n-th frame.
 anim.gotoFrame(n);
@@ -283,39 +309,28 @@ box.padding(pad);
 // Create a new string instance.
 var string = Cut.string(cutouts);
 
-string.setFont(cutouts);
-
-// Value is a string or array, each char/item is used to select create an image
-// using font cutouts.
+// Value is a string or array, each char/item is used to create an image using
+// font.
 string.setValue(value);
+
+// Set string font as cutout prefix. See Cutout section for more.
+string.setFont("texture:prefix");
+
+// Set string font. 'factory' func takes a char/item and return a cutout.
+string.setFont(function(charOrItem) {
+  return aCutout;
+});
 
 //
 // ### Cutout
-// There are two ways to define a cutout: Canvas drawing and image textures.
+// Image cutouts are used to refrence graphics to be painted.
 
-//
-// Canvas drawing
-cutout = Cut.Out.drawing(name = randomString, width, height, ratio = 1,
-    function(context, ratio) {
-      // Draw to context.
-      // this === create cutout
-    });
-
-//
-// Registering an image texture, images are automatically loaded by Cut.Loader.
-Cut.addTexture({
+// Cutouts are usually added to an app by adding textures.
+Cut.addTexture(texture = {
   name : textureName,
   imagePath : textureImagePath,
   imageRatio : 1,
-  map : function(cutout) {
-    // apply change to cutouts
-    return cutout;
-  },
-  factory : function(name) {
-    // dynamically create cutout not found in cutouts list
-    return cutout;
-  },
-  cutouts : [ {
+  cutouts : [ { // list of cutoutDefs or cutouts
     name : cutoutName,
     x : x,
     y : y,
@@ -325,14 +340,44 @@ Cut.addTexture({
     bottom : 0,
     left : 0,
     right : 0
-  }, etc ]
+  }, etc ],
+
+  // `cutouts` are passed through `map`, they can be modifed here.
+  map : function(cutoutDef) {
+    return cutoutDef;
+  },
+
+  // `factory` is called when a cutoutName is not found in `cutouts`.
+  factory : function(cutoutName) {
+    // Dynamically create a cutoutDef or cutout.
+    return cutoutDef; // or cutout
+  }
 }, etc);
 
-// Single cutout selector.
-cutout = "textureName:cutoutName";
+// Then texture cutouts can be referenced through the app.
+Cut.image(cutout = "textureName:cutoutName");
 
-// Multiple cutout selector.
-cutouts = "textureName:cutoutPrefix";
+// Cutouts can also be created using Canvas drawing.
+Cut.image(cutout = Cut.Out.drawing(name = randomString, width, height,
+    ratio = 1, function(context, ratio) {
+      // context is a 2D Canvas context created using width and height.
+      // this === create cutout
+    }));
+
+// There is also a shorthand for that.
+Cut.drawing();
+
+// Canvas drawing can also be used in `texture.cutout` and `texture.factory` to
+// creat cutouts instead of using cutoutDef.
+Cut.addTexture(texture = {
+  name : textureName,
+
+  cutouts : [ Cut.Out.drawing(), etc ],
+
+  factory : function(cutoutName) {
+    return Cut.Out.drawing();
+  }
+}, etc);
 
 //
 // ### Mouse(Touch)

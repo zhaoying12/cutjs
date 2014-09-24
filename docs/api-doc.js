@@ -17,7 +17,8 @@ Cut(function(root, container) {
   root.viewbox(width, height, mode = "in");
 
   // Listen to view port resize events.
-  root.on("viewport", function(width, height) {
+  root.on("viewport", function(viewport) {
+    // `viewport` attributes are `width` and `height`.
   });
 });
 
@@ -121,8 +122,8 @@ foo.on(type, listener);
 // Get type-listeners registered to bar.
 foo.listeners(type);
 
-// Call type-listeners with args.
-foo.publish(type, args);
+// Call type-listeners with args, returns this.
+foo.trigger(type, args);
 
 //
 // ### Pinning
@@ -162,7 +163,7 @@ bar.pin({
 // Usually are set automatically depending on node type.
 bar.pin({
   height : height,
-  width : width,
+  width : width
 });
 
 // Positioning
@@ -180,7 +181,7 @@ bar.pin({
   handleY : 0,
   // Distance from parent align to self handle in pixel.
   offsetX : 0,
-  offsetY : 0,
+  offsetY : 0
 });
 
 // Scale to new width/height.
@@ -188,7 +189,7 @@ bar.pin({
 bar.pin({
   scaleMode : mode,
   scaleWidth : width,
-  scaleHeight : height,
+  scaleHeight : height
 });
 
 // Scale to new width/height and then resize to fill width/height.
@@ -196,7 +197,7 @@ bar.pin({
 bar.pin({
   resizeMode : mode,
   resizeWidth : width,
-  resizeHeight : height,
+  resizeHeight : height
 });
 
 //
@@ -206,20 +207,18 @@ bar.pin({
 // Create a tweening entry.
 var tween = foo.tween(duration = 400, delay = 0);
 
-// Clear tweening queue.
+// Stop and clear tweening queue.
 tween.clear(jumpToEnd = false);
 
-// Set pinning values and start tweening. Currently pinning short-hands are not
-// supported for tweening.
+// Set pinning values and start tweening.
 tween.pin(pinning);
 
-// Set easing for tweening. `easing` can be either a function or identifier as
+// Set easing for tweening, it can be either a function or an identifier as
 // "name[-mode][(params)]", for example "quad" or "poly-in-out(3)".
 // Available names are: linear, quad, cubic, quart, quint, poly(p),
 // sin/sine, exp, circle/circ, bounce, elastic(a, p), back(s)
-// Available modes are: in, out,in-out, out-in.
-tween.ease(function(easing) {
-});
+// Available modes are: in, out, in-out, out-in
+tween.ease(easing);
 
 // Callback when tweening is over.
 tween.then(function() {
@@ -243,8 +242,8 @@ image.setImage(cutout);
 image.cropX(w, x = 0);
 image.cropY(h, y = 0);
 
-// Tile/Stretch image to resize to pinning width and height. To define border
-// use top, bottom, left and right with cutout definition.
+// Tile/Stretch image when pinning width and/or height are changed. To define
+// borders use top, bottom, left and right with cutout definition.
 image.tile();
 image.stretch();
 
@@ -260,7 +259,7 @@ anim.fps();
 anim.fps(fps);
 
 // Set anim frames as cutout prefix. See Cutout section for more.
-anim.setFrames("texture:prefix");
+anim.setFrames(cutouts);
 
 // Set anim frames as cutout array. See Cutout section for more.
 anim.setFrames(array);
@@ -322,7 +321,7 @@ var string = Cut.string(cutouts);
 string.setValue(value);
 
 // Set string font as cutout prefix. See Cutout section for more.
-string.setFont("texture:prefix");
+string.setFont(cutouts);
 
 // Set string font. 'factory' func takes a char/item and return a cutout.
 string.setFont(function(charOrItem) {
@@ -334,7 +333,7 @@ string.setFont(function(charOrItem) {
 // Image cutouts are used to refrence graphics to be painted.
 
 // Cutouts are usually added to an app by adding textures.
-Cut.addTexture(texture = {
+Cut({
   name : textureName,
   imagePath : textureImagePath,
   imageRatio : 1,
@@ -363,21 +362,31 @@ Cut.addTexture(texture = {
 }, etc);
 
 // Then texture cutouts can be referenced through the app.
-Cut.image(cutout = "textureName:cutoutName");
+// Single selection:
+Cut.image("textureName:cutoutName");
+// Multiple selection:
+Cut.anim("textureName:cutoutPrefix");
+Cut.string("textureName:cutoutPrefix");
+
+//
+// ### Drawing
+// 
 
 // Cutouts can also be created using Canvas drawing.
-Cut.image(cutout = Cut.Out.drawing(name = randomString, width, height,
-    ratio = 1, function(context, ratio) {
-      // context is a 2D Canvas context created using width and height.
-      // this === create cutout
-    }));
+cutout = Cut.Out.drawing(width, height, ratio = 1, function(context, ratio) {
+  // context is a 2D Canvas context created using width and height.
+  // this === create cutout
+});
+
+// It can be use to create an image for example:
+Cut.image(Cut.Out.drawing(params));
 
 // There is also a shorthand for that.
-Cut.drawing();
+Cut.drawing(params);
 
 // Canvas drawing can also be used in `texture.cutout` and `texture.factory` to
 // creat cutouts instead of using cutoutDef.
-Cut.addTexture(texture = {
+Cut({
   name : textureName,
 
   cutouts : [ Cut.Out.drawing(), etc ],
@@ -388,15 +397,16 @@ Cut.addTexture(texture = {
 }, etc);
 
 //
-// ### Mouse(Touch)
+// ### Mouse
 // Mouse class is used to capture and process mouse and touch events.
 
 // Subscribe root to Mouse events.
 Cut.Mouse(root, container, captureAnyMove = false);
 
 // Add click listener to bar.
-bar.on(Cut.Mouse.CLICK, function(event, point) {
+bar.on(Cut.Mouse.CLICK, function(point) {
   // point.x and point.y are relative to this node left and top.
+  // point.raw is original event
   return trueToStopPropagating;
 });
 

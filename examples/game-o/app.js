@@ -571,29 +571,27 @@ Cut(function(root, elem) {
 
   function App() {
     App.prototype._super.apply(this, arguments);
-    this.spy(true);
 
     this.game = new Game();
 
-    this.home = new Home(this).appendTo(this).hide().spy(true).pin({
+    this.home = new Home(this).appendTo(this).hide().pin({
       align : 0.5
     });
-    this.play = new Play(this).appendTo(this).hide().spy(true).pin({
+    this.play = new Play(this).appendTo(this).hide().pin({
       align : 0.5
     });
 
     this.open("home");
 
-    this.on("viewport", function(width, height) {
+    this.on("viewport", function(viewport) {
       this.pin({
         width : Conf.width,
         height : Conf.height * 1.2,
         resizeMode : "in",
-        resizeWidth : width,
-        resizeHeight : height - TOP,
+        resizeWidth : viewport.width,
+        resizeHeight : viewport.height - TOP,
         offsetY : TOP
       });
-      return true;
     });
 
   }
@@ -602,21 +600,15 @@ Cut(function(root, elem) {
   App.prototype._super = Cut;
   App.prototype.constructor = App;
 
-  App.prototype.open = function(name) {
-    var open = name;
+  App.prototype.open = function(open) {
     if (typeof open == "string") {
       open = this[open];
     }
     if (this.opened === open) {
       return;
     }
-    if (this.opened) {
-      this.opened.publish("close") || this.opened.hide();
-    }
-    (this.opened = open).publish("open");
-    this.opened.show();
-
-    // this.fs.visible(open === this.home);
+    this.opened && this.opened.trigger("close");
+    this.opened = open.trigger("open");
   };
 
   function Home(app) {
@@ -624,7 +616,7 @@ Cut(function(root, elem) {
 
     var game = app.game;
 
-    this.on("viewport", function(width, height) {
+    this.on("viewport", function() {
       this.pin({
         width : this.parent().pin("width"),
         height : this.parent().pin("height")
@@ -637,12 +629,19 @@ Cut(function(root, elem) {
       });
     });
 
-    this.on("open", game.uiUpgrade = function() {
+    game.uiUpgrade = function() {
       refresh();
+    };
+
+    this.on("open", function() {
+      refresh();
+      this.pin('alpha', 0).show().tween(200).pin('alpha', 1);
     });
 
     this.on("close", function() {
-      this.hide();
+      this.tween(200).pin('alpha', 0).then(function() {
+        this.hide();
+      });
     });
 
     var bg = Cut.image("base:homebg").appendTo(this).pin("align", 0.5);
@@ -774,7 +773,7 @@ Cut(function(root, elem) {
 
     var game = app.game;
 
-    this.on("viewport", function(width, height) {
+    this.on("viewport", function() {
       this.pin({
         width : this.parent().pin("width"),
         height : this.parent().pin("height")
@@ -797,12 +796,15 @@ Cut(function(root, elem) {
     this.on("open", function() {
       elem.style && (elem.style.cursor = "none");
       game.start();
+      this.pin('alpha', 0).show().tween(200).pin('alpha', 1);
     });
 
     this.on("close", function() {
       elem.style && (elem.style.cursor = "");
       game.end();
-      this.hide();
+      this.tween(200).pin('alpha', 0).then(function() {
+        this.hide();
+      });
     });
 
     this.tick(function(t) {
@@ -825,7 +827,7 @@ Cut(function(root, elem) {
 
     var top = Cut.image("base:shadow").stretch().appendTo(this);
 
-    var field = Cut.create().appendTo(this).spy(true).pin({
+    var field = Cut.create().appendTo(this).attr('spy', true).pin({
       width : Conf.width,
       height : Conf.height,
       alignX : 0.5,
@@ -885,7 +887,7 @@ Cut(function(root, elem) {
 
     // var lastMouse = null;
 
-    field.on([ Mouse.MOVE, Mouse.START ], function(ev, point) {
+    field.on([ Mouse.MOVE, Mouse.START ], function(point) {
       // if (lastMouse) {
       // var x = lastMouse.x - point.x + game.dist - lastMouse.dist;
       // var y = lastMouse.y - point.y;
@@ -902,14 +904,14 @@ Cut(function(root, elem) {
       cursor.xy(point.x, point.y).visible(game.pointer(point.x, point.y));
       // }
 
-      // }).on(Mouse.START, function(ev, point) {
+      // }).on(Mouse.START, function(point) {
       // lastMouse = {
       // x : point.x,
       // y : point.y,
       // dist : game.dist
       // };
       //
-      // }).on(Mouse.END, function(ev, point) {
+      // }).on(Mouse.END, function(point) {
       // lastMouse = null;
 
     });

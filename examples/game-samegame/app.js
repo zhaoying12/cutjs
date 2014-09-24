@@ -160,7 +160,7 @@ Cut(function(root, container) {
     width : width * 2,
     height : height * 2,
     align : 0.5
-  }).spy(true);
+  });
 
   Cut.image('base:easy').appendTo(ui.board).pin({
     alignX : 1,
@@ -193,7 +193,7 @@ Cut(function(root, container) {
         offsetX : block.i * 2 + 1,
         offsetY : block.j * 2 + 1,
         handle : 0.5
-      }).on(Cut.Mouse.CLICK, function(ev, point) {
+      }).on(Cut.Mouse.CLICK, function(point) {
         game.click(block);
       });
     }).update(function(block) {

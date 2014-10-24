@@ -4,11 +4,11 @@
  * Available under the MIT license
  * @license
  */
-
+ddddddddddddddddddd
 ${contents}
 
 if (typeof define === 'function' && define.amd) { // AMD
   define('Cut', [], function() {
-    return Cut;
+    return Cut;''
   });
 }
